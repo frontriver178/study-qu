@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塾Q&A - 質問回答アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .slide-up {
+            animation: slideUp 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .stagger-5 { animation-delay: 0.5s; }
+        
+        .fab-rotate {
+            transition: transform 0.3s ease;
+        }
+        .fab-rotate:hover {
+            transform: rotate(90deg);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .subject-tab {
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+        }
+        .subject-tab > * {
+            scroll-snap-align: start;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app"></div>
+
+    <script>
+        // Mock data
+        const questions = [
+            {
+                id: 1,
+                title: "二次関数の頂点の求め方がわかりません",
+                subject: "math",
+                subjectName: "数学",
+                unit: "二次関数",
+                detail: "y = x² - 4x + 3 の頂点の座標を求める問題です。平方完成のやり方を教えてください。",
+                image: "https://picsum.photos/400/300?random=1",
+                user: { name: "田中太郎", avatar: "https://i.pravatar.cc/150?img=1" },
+                time: "2時間前",
+                views: 45,
+                comments: 3,
+                answers: [
+                    {
+                        id: 1,
+                        text: "平方完成を使って解きます。\ny = x² - 4x + 3\ny = (x² - 4x) + 3\ny = (x - 2)² - 4 + 3\ny = (x - 2)² - 1\n\n頂点は (2, -1) です。",
+                        image: "https://picsum.photos/400/300?random=10",
+                        user: { name: "山田先生", avatar: "https://i.pravatar.cc/150?img=10" },
+                        time: "1時間前",
+                        isBest: true
+                    },
+                    {
+                        id: 2,
+                        text: "公式を使う方法もあります。頂点のx座標は -b/2a で求められます。",
+                        user: { name: "鈴木講師", avatar: "https://i.pravatar.cc/150?img=11" },
+                        time: "30分前",
+                        isBest: false
+                    }
+                ]
+            },
+            {
+                id: 2,
+                title: "力学的エネルギー保存則の問題",
+                subject: "physics",
+                subjectName: "物理",
+                unit: "力学",
+                detail: "斜面を転がる球の速度計算で詰まっています。",
+                image: "https://picsum.photos/400/300?random=2",
+                user: { name: "佐藤花子", avatar: "https://i.pravatar.cc/150?img=2" },
+                time: "3時間前",
+                views: 32,
+                comments: 2,
+                answers: []
+            },
+            {
+                id: 3,
+                title: "酸化還元反応の半反応式の作り方",
+                subject: "chemistry",
+                subjectName: "化学",
+                unit: "酸化還元",
+                detail: "MnO₄⁻ → Mn²⁺ の半反応式はどう作りますか？",
+                image: "https://picsum.photos/400/300?random=3",
+                user: { name: "高橋次郎", avatar: "https://i.pravatar.cc/150?img=3" },
+                time: "5時間前",
+                views: 28,
+                comments: 1,
+                answers: []
+            },
+            {
+                id: 4,
+                title: "関係代名詞whichとthatの使い分け",
+                subject: "english",
+                subjectName: "英語",
+                unit: "文法",
+                detail: "どちらを使えばいいか判断基準を教えてください。",
+                image: "https://picsum.photos/400/300?random=4",
+                user: { name: "伊藤美咲", avatar: "https://i.pravatar.cc/150?img=4" },
+                time: "6時間前",
+                views: 56,
+                comments: 4,
+                answers: []
+            },
+            {
+                id: 5,
+                title: "微分の定義式について",
+                subject: "math",
+                subjectName: "数学",
+                unit: "微分",
+                detail: "lim[h→0] (f(x+h) - f(x))/h の意味がよくわかりません。",
+                image: "https://picsum.photos/400/300?random=5",
+                user: { name: "中村健太", avatar: "https://i.pravatar.cc/150?img=5" },
+                time: "1日前",
+                views: 89,
+                comments: 5,
+                answers: []
+            }
+        ];
+
+        const subjectColors = {
+            math: "bg-blue-500",
+            physics: "bg-emerald-500",
+            chemistry: "bg-orange-500",
+            english: "bg-violet-500"
+        };
+
+        const subjectBorderColors = {
+            math: "border-blue-500",
+            physics: "border-emerald-500",
+            chemistry: "border-orange-500",
+            english: "border-violet-500"
+        };
+
+        let currentScreen = 'home';
+        let selectedSubject = 'all';
+        let currentQuestion = null;
+
+        // Screen renderers
+        function renderHome() {
+            const filteredQuestions = selectedSubject === 'all' 
+                ? questions 
+                : questions.filter(q => q.subject === selectedSubject);
+
+            return `
+                <div class="min-h-screen pb-16 fade-in">
+                    <!-- Header -->
+                    <header class="bg-white shadow-sm sticky top-0 z-40">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <h1 class="text-2xl font-bold">
+                                塾Q<span class="text-blue-500">&</span>A
+                            </h1>
+                            <button class="p-2">
+                                <i data-lucide="search" class="w-6 h-6"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Subject tabs -->
+                        <div class="overflow-x-auto subject-tab">
+                            <div class="flex gap-2 px-4 pb-3 min-w-max">
+                                <button onclick="filterSubject('all')" 
+                                    class="px-4 py-1.5 rounded-full transition-all ${selectedSubject === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}">
+                                    全て
+                                </button>
+                                <button onclick="filterSubject('math')" 
+                                    class="px-4 py-1.5 rounded-full transition-all ${selectedSubject === 'math' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}">
+                                    数学
+                                </button>
+                                <button onclick="filterSubject('physics')" 
+                                    class="px-4 py-1.5 rounded-full transition-all ${selectedSubject === 'physics' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-700'}">
+                                    物理
+                                </button>
+                                <button onclick="filterSubject('chemistry')" 
+                                    class="px-4 py-1.5 rounded-full transition-all ${selectedSubject === 'chemistry' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}">
+                                    化学
+                                </button>
+                                <button onclick="filterSubject('english')" 
+                                    class="px-4 py-1.5 rounded-full transition-all ${selectedSubject === 'english' ? 'bg-violet-500 text-white' : 'bg-gray-100 text-gray-700'}">
+                                    英語
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Questions list -->
+                    <main class="px-4 py-4">
+                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            ${filteredQuestions.map((q, index) => `
+                                <div onclick="viewQuestion(${q.id})" 
+                                    class="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer card-hover slide-up stagger-${index + 1}">
+                                    <div class="relative">
+                                        <img src="${q.image}" alt="問題画像" class="w-full aspect-video object-cover">
+                                        <span class="absolute top-2 right-2 px-2 py-1 text-xs text-white rounded ${subjectColors[q.subject]}">
+                                            ${q.subjectName}
+                                        </span>
+                                    </div>
+                                    <div class="p-4">
+                                        <h3 class="font-bold text-gray-900 line-clamp-2 mb-3">
+                                            ${q.title}
+                                        </h3>
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <img src="${q.user.avatar}" alt="${q.user.name}" 
+                                                    class="w-6 h-6 rounded-full">
+                                                <span class="text-sm text-gray-600">${q.user.name}</span>
+                                                <span class="text-xs text-gray-400">${q.time}</span>
+                                            </div>
+                                            <div class="flex items-center gap-3 text-gray-500">
+                                                <div class="flex items-center gap-1">
+                                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                                    <span class="text-xs">${q.views}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1">
+                                                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                                    <span class="text-xs">${q.comments}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </main>
+
+                    <!-- FAB -->
+                    <button onclick="showPostQuestion()" 
+                        class="fixed bottom-20 right-4 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600 transition-all z-30">
+                        <i data-lucide="plus" class="w-6 h-6 fab-rotate"></i>
+                    </button>
+
+                    <!-- Bottom navigation -->
+                    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+                        <div class="flex justify-around py-2">
+                            <button class="flex flex-col items-center gap-1 p-2 text-blue-500">
+                                <i data-lucide="home" class="w-5 h-5"></i>
+                                <span class="text-xs">ホーム</span>
+                            </button>
+                            <button class="flex flex-col items-center gap-1 p-2 text-gray-500">
+                                <i data-lucide="search" class="w-5 h-5"></i>
+                                <span class="text-xs">検索</span>
+                            </button>
+                            <button class="flex flex-col items-center gap-1 p-2 text-gray-500">
+                                <i data-lucide="bookmark" class="w-5 h-5"></i>
+                                <span class="text-xs">保存</span>
+                            </button>
+                            <button class="flex flex-col items-center gap-1 p-2 text-gray-500">
+                                <i data-lucide="user" class="w-5 h-5"></i>
+                                <span class="text-xs">マイページ</span>
+                            </button>
+                        </div>
+                    </nav>
+                </div>
+            `;
+        }
+
+        function renderPostQuestion() {
+            return `
+                <div class="min-h-screen bg-gray-50 fade-in">
+                    <!-- Header -->
+                    <header class="bg-white shadow-sm sticky top-0 z-40">
+                        <div class="flex items-center gap-4 px-4 py-3">
+                            <button onclick="showHome()" class="p-2 -ml-2">
+                                <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                            </button>
+                            <h2 class="text-lg font-bold">質問を投稿</h2>
+                        </div>
+                    </header>
+
+                    <main class="p-4">
+                        <form class="space-y-4">
+                            <!-- Image upload -->
+                            <div class="bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-8 text-center hover:bg-blue-100 transition-colors cursor-pointer">
+                                <i data-lucide="camera" class="w-12 h-12 mx-auto mb-2 text-blue-500"></i>
+                                <p class="text-blue-700 font-medium">問題を撮影</p>
+                                <p class="text-sm text-blue-600 mt-1">タップして画像を選択</p>
+                            </div>
+
+                            <!-- Title input -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    質問タイトル <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" 
+                                    placeholder="どこがわからない？" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <!-- Detail input -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    詳細説明 <span class="text-gray-400 text-xs">（任意）</span>
+                                </label>
+                                <textarea rows="3" 
+                                    placeholder="試したことや、わからない部分を詳しく書いてください"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+
+                            <!-- Subject and unit -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        科目 <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">選択してください</option>
+                                        <option value="math">数学</option>
+                                        <option value="physics">物理</option>
+                                        <option value="chemistry">化学</option>
+                                        <option value="english">英語</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        単元 <span class="text-gray-400 text-xs">（任意）</span>
+                                    </label>
+                                    <input type="text" 
+                                        placeholder="例：二次関数"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            <!-- Submit button -->
+                            <button type="button" onclick="showHome()" 
+                                class="w-full bg-blue-500 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
+                                <i data-lucide="send" class="w-5 h-5"></i>
+                                質問を投稿する
+                            </button>
+                        </form>
+                    </main>
+                </div>
+            `;
+        }
+
+        function renderQuestionDetail() {
+            const q = currentQuestion;
+            if (!q) return '';
+
+            return `
+                <div class="min-h-screen bg-gray-50 pb-20 fade-in">
+                    <!-- Header -->
+                    <header class="bg-white shadow-sm sticky top-0 z-40">
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-4">
+                                <button onclick="showHome()" class="p-2 -ml-2">
+                                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                                </button>
+                                <h2 class="text-lg font-bold">質問詳細</h2>
+                            </div>
+                            <button class="p-2">
+                                <i data-lucide="more-vertical" class="w-6 h-6"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    <main>
+                        <!-- Question image -->
+                        <img src="${q.image}" alt="問題画像" class="w-full aspect-video object-cover">
+
+                        <!-- Question info -->
+                        <div class="bg-white p-4 border-b">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="px-2 py-1 text-xs text-white rounded ${subjectColors[q.subject]}">
+                                    ${q.subjectName}
+                                </span>
+                                ${q.unit ? `<span class="text-sm text-gray-600">${q.unit}</span>` : ''}
+                            </div>
+                            <h1 class="text-xl font-bold text-gray-900 mb-2">${q.title}</h1>
+                            ${q.detail ? `<p class="text-gray-700 mb-3">${q.detail}</p>` : ''}
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <img src="${q.user.avatar}" alt="${q.user.name}" 
+                                        class="w-8 h-8 rounded-full">
+                                    <div>
+                                        <p class="text-sm font-medium">${q.user.name}</p>
+                                        <p class="text-xs text-gray-500">${q.time}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 text-gray-500">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                    <span class="text-sm">${q.views}回閲覧</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Answers section -->
+                        <div class="bg-white mt-2">
+                            <div class="px-4 py-3 border-b">
+                                <h2 class="font-bold text-gray-900">
+                                    回答 ${q.answers.length}件
+                                </h2>
+                            </div>
+
+                            ${q.answers.length > 0 ? q.answers.map(answer => `
+                                <div class="p-4 border-b ${answer.isBest ? 'bg-green-50' : ''}">
+                                    ${answer.isBest ? `
+                                        <div class="flex items-center gap-1 text-green-600 mb-2">
+                                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                            <span class="text-sm font-medium">ベストアンサー</span>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${answer.image ? `
+                                        <img src="${answer.image}" alt="回答画像" class="w-full rounded-lg mb-3">
+                                    ` : ''}
+                                    
+                                    <p class="text-gray-800 whitespace-pre-wrap mb-3">${answer.text}</p>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <img src="${answer.user.avatar}" alt="${answer.user.name}" 
+                                            class="w-6 h-6 rounded-full">
+                                        <span class="text-sm font-medium">${answer.user.name}</span>
+                                        <span class="text-xs text-gray-500">${answer.time}</span>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="p-8 text-center text-gray-500">
+                                    <i data-lucide="message-circle" class="w-12 h-12 mx-auto mb-2 text-gray-300"></i>
+                                    <p>まだ回答がありません</p>
+                                </div>
+                            `}
+                        </div>
+                    </main>
+
+                    <!-- Answer button (for teachers) -->
+                    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
+                        <button onclick="alert('回答投稿画面を表示')" 
+                            class="w-full bg-blue-500 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
+                            <i data-lucide="edit-3" class="w-5 h-5"></i>
+                            この質問に回答する
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Navigation functions
+        function showHome() {
+            currentScreen = 'home';
+            renderApp();
+        }
+
+        function showPostQuestion() {
+            currentScreen = 'post';
+            renderApp();
+        }
+
+        function viewQuestion(id) {
+            currentQuestion = questions.find(q => q.id === id);
+            currentScreen = 'detail';
+            renderApp();
+        }
+
+        function filterSubject(subject) {
+            selectedSubject = subject;
+            renderApp();
+        }
+
+        // Main render function
+        function renderApp() {
+            let content = '';
+            
+            switch(currentScreen) {
+                case 'home':
+                    content = renderHome();
+                    break;
+                case 'post':
+                    content = renderPostQuestion();
+                    break;
+                case 'detail':
+                    content = renderQuestionDetail();
+                    break;
+            }
+            
+            document.getElementById('app').innerHTML = content;
+            
+            // Initialize Lucide icons
+            setTimeout(() => {
+                lucide.createIcons();
+            }, 0);
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            renderApp();
+        });
+    </script>
+</body>
+</html>
